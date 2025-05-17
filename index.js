@@ -1,25 +1,54 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
 const cors = require('cors');
+const { Server } = require('socket.io');
+const { registerUser, loginUser } = require('./controllers/authController');
+const authenticateToken = require('./middleware/authMiddleware');
+const pool = require('./db');
 
 const app = express();
 const server = http.createServer(app);
+
+// Setup Socket.IO with CORS
 const io = new Server(server, {
   cors: {
     origin: '*',
+    methods: ['GET', 'POST']
   }
 });
 
+// Middleware
 app.use(cors());
+app.use(express.json());
+
+// Health check
 app.get('/', (req, res) => {
   res.send('Whiteboard backend is running');
 });
+// <-- Add the test DB route here -->
+app.get('/test-db', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ time: result.rows[0].now });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// Auth Routes
+app.post('/api/register', registerUser);
+app.post('/api/login', loginUser);
 
+// Protected Route Example
+app.get('/api/protected', authenticateToken, async (req, res) => {
+  const userId = req.user.userId;
+  res.json({ message: `You are authenticated, user ${userId}` });
+});
+
+// WebSocket handling
 const rooms = {};
 
 io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+  console.log('New user connected:', socket.id);
 
   socket.on('join-room', (roomId) => {
     socket.join(roomId);
@@ -29,8 +58,14 @@ io.on('connection', (socket) => {
   socket.on('draw', ({ roomId, data }) => {
     socket.to(roomId).emit('draw', data);
   });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
 });
 
-server.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+// Start server
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
