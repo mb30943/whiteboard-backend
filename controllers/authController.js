@@ -47,12 +47,12 @@ console.log('===');
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    // const isMatch = await bcrypt.compare(password, user.password);
-    //  console.log('isMatch',isMatch);
-    // if (!isMatch) {
-    // console.log('2');
-    //   return res.status(400).json({ error: 'Invalid credentials' });
-    // }
+    const isMatch = await bcrypt.compare(password, user.password);
+     console.log('isMatch',isMatch);
+    if (!isMatch) {
+    console.log('2');
+      return res.status(400).json({ error: 'Invalid credentials' });
+    }
 
     const token = jwt.sign({ userId: user.id }, 'secretkey', { expiresIn: '1h' });
     res.json({ token });
