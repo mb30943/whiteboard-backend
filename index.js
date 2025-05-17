@@ -3,6 +3,10 @@ const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
 const { registerUser, loginUser } = require('./controllers/authController');
+const boardsRouter = require('./controllers/board');
+
+
+
 const authenticateToken = require('./middleware/authMiddleware');
 const pool = require('./db');
 
@@ -20,23 +24,18 @@ const io = new Server(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/api/boards', boardsRouter);
 
 // Health check
 app.get('/', (req, res) => {
   res.send('Whiteboard backend is running');
 });
-// <-- Add the test DB route here -->
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({ time: result.rows[0].now });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+
+
 // Auth Routes
 app.post('/api/register', registerUser);
 app.post('/api/login', loginUser);
+
 
 // Protected Route Example
 app.get('/api/protected', authenticateToken, async (req, res) => {
