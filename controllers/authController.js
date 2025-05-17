@@ -22,7 +22,10 @@ async function registerUser(req, res) {
     const user = result.rows[0];
     const token = jwt.sign({ userId: user.id }, 'secretkey', { expiresIn: '1h' });
 
-    res.json({ token });
+    res.json({ token ,user: {
+        id: user.id,
+        email: user.email
+      }});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
