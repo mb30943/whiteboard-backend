@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const pool = require('../db');
+const pool = require('./db');
 
 // Register user
 async function registerUser(req, res) {
@@ -55,7 +55,10 @@ console.log('===');
     }
 
     const token = jwt.sign({ userId: user.id }, 'secretkey', { expiresIn: '1h' });
-    res.json({ token });
+    res.json({ token ,user: {
+        id: user.id,
+        email: user.email
+      }});
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
