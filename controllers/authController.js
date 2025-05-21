@@ -1,72 +1,25 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const express = require('express');
+const router = express.Router();
 const pool = require('../db');
 
-// Register user
-async function registerUser(req, res) {
-  const { email, password } = req.body;
+router.post('/syncUser', async (req, res) => {
+  const { user_id, email } = req.body;
+console.log('Incoming /syncUser:', user_id, email);
   try {
-    const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
-      return res.status(400).json({ error: 'User already exists' });
+    const existing = await pool.query('SELECT id FROM users WHERE id = $1', [user_id]);
+
+    if (existing.rowCount === 0) {
+     await pool.query(
+        'INSERT INTO users (id, email, password, created_at) VALUES ($1, $2, $3, NOW())',
+        [user_id, email, 'firebase_managed']
+      );
+
     }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const result = await pool.query(
-      'INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *',
-      [email, hashedPassword]
-    );
-
-    const user = result.rows[0];
-    const token = jwt.sign({ userId: user.id }, 'secretkey', { expiresIn: '1h' });
-
-    res.json({ token ,user: {
-        id: user.id,
-        email: user.email
-      }});
+    res.status(200).json({ message: 'User synced' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error syncing user:', err);
+    res.status(500).json({ error: 'Failed to sync user' });
   }
-}
+});
 
-// Login user
-async function loginUser(req, res) {
-  const { email, password } = req.body;
-  console.log('Login attempt:', email, password);  // <-- add this
-console.log('===');
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-     console.log('result',  result.rows[0]);  // <-- add this
-    const user = result.rows[0];
-
-    if (!user) {
-          console.log('1');
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-     console.log('isMatch',isMatch);
-    if (!isMatch) {
-    console.log('2');
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign({ userId: user.id }, 'secretkey', { expiresIn: '1h' });
-    res.json({ token ,user: {
-        id: user.id,
-        email: user.email
-      }});
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: err.message });
-  }
-}
-
-
-module.exports = { registerUser, loginUser };
+module.exports = router;

@@ -2,8 +2,8 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const { registerUser, loginUser } = require('./controllers/authController');
 const boardsRouter = require('./controllers/board');
+const syncUserRoutes = require('./controllers/authController');
 
 
 
@@ -25,16 +25,12 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 app.use('/api/boards', boardsRouter);
+app.use('/api', syncUserRoutes);
 
 // Health check
 app.get('/', (req, res) => {
   res.send('Whiteboard backend is running');
 });
-
-
-// Auth Routes
-app.post('/api/register', registerUser);
-app.post('/api/login', loginUser);
 
 
 // Protected Route Example
