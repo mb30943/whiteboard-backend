@@ -57,7 +57,15 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
+  socket.on('undo', ({ roomId }) => {
+  socket.to(roomId).emit('undo');
 });
+
+socket.on('redo', ({ roomId, stroke }) => {
+  socket.to(roomId).emit('redo', stroke);
+});
+});
+
 
 // Start server
 const PORT = process.env.PORT || 3000;
