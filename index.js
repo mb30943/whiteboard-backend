@@ -39,36 +39,60 @@ app.get('/api/protected', authenticateToken, async (req, res) => {
   res.json({ message: `You are authenticated, user ${userId}` });
 });
 
-// WebSocket handling
-const rooms = {};
+// Real-time whiteboard collaboration
+const whiteboardUsers = {}; 
 
 io.on('connection', (socket) => {
   console.log('New user connected:', socket.id);
 
-  socket.on('join-room', (roomId) => {
+  socket.on('join-room', ({ roomId, username }) => {
     socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+    console.log(`User ${socket.id} (${username}) joined room ${roomId}`);
+
+    if (!whiteboardUsers[roomId]) whiteboardUsers[roomId] = [];
+
+    whiteboardUsers[roomId].push({ socketId: socket.id, username });
+
+    // Send updated user list to everyone in the room
+    io.to(roomId).emit('update-users', whiteboardUsers[roomId]);
   });
 
   socket.on('draw', ({ roomId, data }) => {
     socket.to(roomId).emit('draw', data);
   });
 
+  socket.on('undo', ({ roomId }) => {
+    socket.to(roomId).emit('undo');
+  });
+
+  socket.on('redo', ({ roomId, stroke }) => {
+    socket.to(roomId).emit('redo', stroke);
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+
+    for (const roomId in whiteboardUsers) {
+      const users = whiteboardUsers[roomId];
+      const updatedUsers = users.filter(u => u.socketId !== socket.id);
+
+      if (updatedUsers.length !== users.length) {
+        whiteboardUsers[roomId] = updatedUsers;
+
+        // Notify clients in the room about the updated user list
+        io.to(roomId).emit('update-users', updatedUsers);
+      }
+
+      // Clean up empty room
+      if (whiteboardUsers[roomId].length === 0) {
+        delete whiteboardUsers[roomId];
+      }
+    }
   });
-  socket.on('undo', ({ roomId }) => {
-  socket.to(roomId).emit('undo');
 });
-
-socket.on('redo', ({ roomId, stroke }) => {
-  socket.to(roomId).emit('redo', stroke);
-});
-});
-
 
 // Start server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on http:// 192.168.0.104:${PORT}`);
+  console.log(`Server running on http://192.168.0.104:${PORT}`);
 });
