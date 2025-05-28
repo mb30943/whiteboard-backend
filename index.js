@@ -45,20 +45,10 @@ const rooms = {};
 io.on('connection', (socket) => {
   console.log('New user connected:', socket.id);
 
-  socket.on('join-room', ({ roomId, username }) => {
-  socket.join(roomId);
-
-  if (!rooms[roomId]) {
-    rooms[roomId] = new Map();
-  }
-
-  rooms[roomId].set(socket.id, username);
-
-  io.to(roomId).emit('room-users', Array.from(rooms[roomId].values()));
-
-  console.log(`User ${username} (${socket.id}) joined room ${roomId}`);
-});
-
+  socket.on('join-room', (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined room ${roomId}`);
+  });
 
   socket.on('draw', ({ roomId, data }) => {
     socket.to(roomId).emit('draw', data);
@@ -66,15 +56,6 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
-   for (const roomId in rooms) {
-  if (rooms[roomId].has(socket.id)) {
-    rooms[roomId].delete(socket.id);
-    io.to(roomId).emit('room-users', Array.from(rooms[roomId].values()));
-    if (rooms[roomId].size === 0) {
-      delete rooms[roomId];
-    }
-  }
-}
   });
   socket.on('undo', ({ roomId }) => {
   socket.to(roomId).emit('undo');
