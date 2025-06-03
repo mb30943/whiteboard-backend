@@ -2,7 +2,6 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const boardsRouter = require('./controllers/board');
 const syncUserRoutes = require('./controllers/authController');
 
 
@@ -24,7 +23,6 @@ const io = new Server(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/api/boards', boardsRouter);
 app.use('/api', syncUserRoutes);
 
 // Health check
