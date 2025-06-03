@@ -41,22 +41,39 @@ app.get('/api/protected', authenticateToken, async (req, res) => {
 
 // WebSocket handling
 const rooms = {};
+const roomUsers = {}; 
 
 io.on('connection', (socket) => {
   console.log('New user connected:', socket.id);
 
-  socket.on('join-room', (roomId) => {
+ socket.on('join-room', ({ roomId, username }) => {
     socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+
+    socket.roomId = roomId;
+    socket.username = username;
+
+    if (!roomUsers[roomId]) {
+      roomUsers[roomId] = {};
+    }
+
+    roomUsers[roomId][socket.id] = username;
+
+    io.to(roomId).emit('user-list', Object.values(roomUsers[roomId]));
+  });
+
+  socket.on('disconnect', () => {
+    const roomId = socket.roomId; 
+    if (roomId && roomUsers[roomId]) {
+      delete roomUsers[roomId][socket.id];
+      io.to(roomId).emit('user-list', Object.values(roomUsers[roomId]));
+    }
   });
 
   socket.on('draw', ({ roomId, data }) => {
     socket.to(roomId).emit('draw', data);
   });
 
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
+
   socket.on('undo', ({ roomId }) => {
   socket.to(roomId).emit('undo');
 });
